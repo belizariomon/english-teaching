@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ConversationPanel } from './components/ConversationPanel'
 import { checkBackendHealth } from './services/api'
 
 function App() {
@@ -19,19 +20,23 @@ function App() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-neutral-200 bg-white px-8 py-6 text-center shadow-sm">
-        {backendStatus === 'loading' && (
+      {backendStatus === 'loading' && (
+        <div className="rounded-2xl border border-neutral-200 bg-white px-8 py-6 text-center shadow-sm">
           <p className="text-neutral-500">Conectando con el servidor...</p>
-        )}
-        {backendStatus === 'ok' && (
-          <p className="text-green-700">Servidor conectado</p>
-        )}
-        {backendStatus === 'error' && (
+        </div>
+      )}
+
+      {backendStatus === 'error' && (
+        <div className="rounded-2xl border border-neutral-200 bg-white px-8 py-6 text-center shadow-sm">
           <p className="text-red-600">
             No se pudo conectar al servidor. ¿Está corriendo el backend?
           </p>
-        )}
-      </div>
+        </div>
+      )}
+
+      {backendStatus === 'ok' && (
+        <ConversationPanel backendReady={true} />
+      )}
     </div>
   )
 }
