@@ -8,7 +8,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'https://english-teaching-03d2.onrender.com',
         changeOrigin: true,
       },
     },
