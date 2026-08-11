@@ -1,7 +1,9 @@
 import type { ConversationResult } from '../types/conversation'
+const API_URL =
+  import.meta.env.VITE_API_URL || ''
 
 export async function checkBackendHealth(): Promise<void> {
-  const response = await fetch('/api/health')
+  const response = await fetch(`${API_URL}/api/health`)
 
   if (!response.ok) {
     throw new Error('Backend no disponible')
@@ -43,7 +45,7 @@ export async function sendConversation(
     `recording.${extension}`,
   )
 
-  const response = await fetch('/api/conversation', {
+  const response = await fetch(`${API_URL}/api/conversation`, {
     method: 'POST',
     body: formData,
   })
