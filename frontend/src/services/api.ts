@@ -3,6 +3,7 @@ const API_URL =
   import.meta.env.VITE_API_URL || ''
 
 export async function checkBackendHealth(): Promise<void> {
+  console.log('API_URL', API_URL)
   const response = await fetch(`${API_URL}/api/health`)
 
   if (!response.ok) {
@@ -44,7 +45,7 @@ export async function sendConversation(
     audioBlob,
     `recording.${extension}`,
   )
-
+  console.log('API_URL', API_URL)
   const response = await fetch(`${API_URL}/api/conversation`, {
     method: 'POST',
     body: formData,
