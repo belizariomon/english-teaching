@@ -1,22 +1,44 @@
 import { useState } from 'react'
+
 import { sendConversation } from '../services/api'
 import { useRecorder } from '../hooks/useRecorder'
+
 import type { ConversationResult } from '../types/conversation'
 
-type PanelState = 'idle' | 'recording' | 'processing' | 'done' | 'error'
+type PanelState =
+  | 'idle'
+  | 'recording'
+  | 'processing'
+  | 'done'
+  | 'error'
 
 type ConversationPanelProps = {
   backendReady: boolean
 }
 
-export function ConversationPanel({ backendReady }: ConversationPanelProps) {
-  const { isRecording, startRecording, stopRecording, error: recorderError } = useRecorder()
-  const [panelState, setPanelState] = useState<PanelState>('idle')
-  const [result, setResult] = useState<ConversationResult | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+export function ConversationPanel({
+  backendReady,
+}: ConversationPanelProps) {
+  const {
+    isRecording,
+    startRecording,
+    stopRecording,
+    error: recorderError,
+  } = useRecorder()
+
+  const [panelState, setPanelState] =
+    useState<PanelState>('idle')
+
+  const [result, setResult] =
+    useState<ConversationResult | null>(null)
+
+  const [errorMessage, setErrorMessage] =
+    useState<string | null>(null)
 
   const handleButtonClick = async () => {
-    if (panelState === 'processing') return
+    if (panelState === 'processing') {
+      return
+    }
 
     if (isRecording) {
       setPanelState('processing')
@@ -24,23 +46,44 @@ export function ConversationPanel({ backendReady }: ConversationPanelProps) {
 
       try {
         const audioBlob = await stopRecording()
-        const conversationResult = await sendConversation(audioBlob)
+
+        if (!audioBlob.size) {
+          throw new Error('La grabación está vacía.')
+        }
+
+        const conversationResult =
+          await sendConversation(audioBlob)
+
         setResult(conversationResult)
         setPanelState('done')
 
-        const audio = new Audio(`data:audio/mp3;base64,${conversationResult.audioBase64}`)
-        audio.play()
-      } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : 'Error al procesar la conversación')
+        if (conversationResult.audioBase64) {
+          const audio = new Audio(
+            `data:audio/mpeg;base64,${conversationResult.audioBase64}`,
+          )
+
+          await audio.play()
+        }
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : 'Error al procesar la conversación',
+        )
+
         setPanelState('error')
       }
+
       return
     }
 
     setResult(null)
     setErrorMessage(null)
+
     await startRecording()
-    setPanelState('recording')
+
+    // Si startRecording falló, no cambiamos a "recording".
+    // El estado real de isRecording será false.
   }
 
   const handleRetry = () => {
@@ -49,15 +92,24 @@ export function ConversationPanel({ backendReady }: ConversationPanelProps) {
     setPanelState('idle')
   }
 
-  const displayError = errorMessage ?? recorderError
+  const displayError =
+    errorMessage ?? recorderError
+
+  const effectiveState =
+    recorderError && !isRecording
+      ? 'error'
+      : panelState
+
   const buttonLabel =
-    panelState === 'processing'
+    effectiveState === 'processing'
       ? 'Procesando...'
       : isRecording
         ? 'Detener y enviar'
         : 'Hablar'
 
-  const buttonDisabled = !backendReady || panelState === 'processing'
+  const buttonDisabled =
+    !backendReady ||
+    effectiveState === 'processing'
 
   return (
     <div className="flex w-full flex-col items-center gap-6">
@@ -81,13 +133,18 @@ export function ConversationPanel({ backendReady }: ConversationPanelProps) {
         </div>
       )}
 
-      {panelState === 'processing' && (
-        <p className="text-neutral-500">Procesando...</p>
+      {effectiveState === 'processing' && (
+        <p className="text-neutral-500">
+          Procesando...
+        </p>
       )}
 
-      {panelState === 'error' && displayError && (
+      {effectiveState === 'error' && displayError && (
         <div className="w-full rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-center">
-          <p className="text-red-600">{displayError}</p>
+          <p className="text-red-600">
+            {displayError}
+          </p>
+
           <button
             type="button"
             onClick={handleRetry}
@@ -98,28 +155,48 @@ export function ConversationPanel({ backendReady }: ConversationPanelProps) {
         </div>
       )}
 
-      {panelState === 'done' && result && (
+      {effectiveState === 'done' && result && (
         <div className="w-full space-y-4 rounded-2xl border border-neutral-200 bg-white px-6 py-6 shadow-sm">
           <div>
-            <p className="text-sm font-medium text-neutral-500">Lo dijiste:</p>
-            <p className="mt-1 text-lg">{result.transcript}</p>
+            <p className="text-sm font-medium text-neutral-500">
+              Lo dijiste:
+            </p>
+
+            <p className="mt-1 text-lg">
+              {result.transcript}
+            </p>
           </div>
 
           {result.correction !== result.transcript && (
             <div>
-              <p className="text-sm font-medium text-neutral-500">Corrección:</p>
-              <p className="mt-1 text-lg text-amber-700">{result.correction}</p>
+              <p className="text-sm font-medium text-neutral-500">
+                Corrección:
+              </p>
+
+              <p className="mt-1 text-lg text-amber-700">
+                {result.correction}
+              </p>
             </div>
           )}
 
           <div>
-            <p className="text-sm font-medium text-neutral-500">Explicación:</p>
-            <p className="mt-1">{result.explanation}</p>
+            <p className="text-sm font-medium text-neutral-500">
+              Explicación:
+            </p>
+
+            <p className="mt-1">
+              {result.explanation}
+            </p>
           </div>
 
           <div>
-            <p className="text-sm font-medium text-neutral-500">Respuesta:</p>
-            <p className="mt-1 text-lg">{result.reply}</p>
+            <p className="text-sm font-medium text-neutral-500">
+              Respuesta:
+            </p>
+
+            <p className="mt-1 text-lg">
+              {result.reply}
+            </p>
           </div>
         </div>
       )}

@@ -8,9 +8,40 @@ export async function checkBackendHealth(): Promise<void> {
   }
 }
 
-export async function sendConversation(audioBlob: Blob): Promise<ConversationResult> {
+function getAudioExtension(blob: Blob): string {
+  const mimeType = blob.type.toLowerCase()
+
+  if (mimeType.includes('webm')) {
+    return 'webm'
+  }
+
+  if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
+    return 'm4a'
+  }
+
+  if (mimeType.includes('mpeg') || mimeType.includes('mp3')) {
+    return 'mp3'
+  }
+
+  if (mimeType.includes('wav')) {
+    return 'wav'
+  }
+
+  return 'webm'
+}
+
+export async function sendConversation(
+  audioBlob: Blob,
+): Promise<ConversationResult> {
   const formData = new FormData()
-  formData.append('audio', audioBlob, 'recording.webm')
+
+  const extension = getAudioExtension(audioBlob)
+
+  formData.append(
+    'audio',
+    audioBlob,
+    `recording.${extension}`,
+  )
 
   const response = await fetch('/api/conversation', {
     method: 'POST',
@@ -19,12 +50,14 @@ export async function sendConversation(audioBlob: Blob): Promise<ConversationRes
 
   if (!response.ok) {
     const body = await response.json().catch(() => null)
+
     const message =
       body && typeof body.error === 'string'
         ? body.error
         : 'Error al enviar la conversación'
+
     throw new Error(message)
   }
 
-  return response.json()
+  return response.json() as Promise<ConversationResult>
 }
