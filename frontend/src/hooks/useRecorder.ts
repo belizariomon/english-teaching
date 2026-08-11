@@ -10,65 +10,129 @@ type UseRecorderResult = {
 export function useRecorder(): UseRecorderResult {
   const [isRecording, setIsRecording] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
-  const cleanupStream = () => {
+  const cleanup = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
+    mediaRecorderRef.current = null
+    chunksRef.current = []
+    setIsRecording(false)
   }
 
-  const startRecording = async () => {
+  const getSupportedMimeType = (): string => {
+    const candidates = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/mpeg',
+    ]
+
+    return (
+      candidates.find((mimeType) =>
+        MediaRecorder.isTypeSupported(mimeType),
+      ) ?? ''
+    )
+  }
+
+  const startRecording = async (): Promise<void> => {
     setError(null)
     chunksRef.current = []
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('El navegador no permite acceder al micrófono.')
+      }
+
+      if (typeof MediaRecorder === 'undefined') {
+        throw new Error('El navegador no soporta grabación de audio.')
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      })
+
       streamRef.current = stream
 
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : 'audio/mp4'
+      const mimeType = getSupportedMimeType()
 
-      const recorder = new MediaRecorder(stream, { mimeType })
-      mediaRecorderRef.current = recorder
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
 
-      recorder.ondataavailable = (event) => {
+      recorder.ondataavailable = (event: BlobEvent) => {
         if (event.data.size > 0) {
           chunksRef.current.push(event.data)
         }
       }
 
+      recorder.onerror = () => {
+        setError('Ocurrió un error durante la grabación.')
+        cleanup()
+      }
+
+      recorder.onstop = () => {
+        cleanup()
+      }
+
+      mediaRecorderRef.current = recorder
+
       recorder.start()
       setIsRecording(true)
-    } catch {
-      cleanupStream()
-      setError('No se pudo acceder al micrófono. Verifica los permisos del navegador.')
+    } catch (error) {
+      cleanup()
+
+      if (
+        error instanceof DOMException &&
+        (error.name === 'NotAllowedError' ||
+          error.name === 'PermissionDeniedError')
+      ) {
+        setError(
+          'No se permitió el acceso al micrófono. Verifica los permisos del navegador.',
+        )
+        return
+      }
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo iniciar la grabación.',
+      )
     }
   }
 
   const stopRecording = (): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const recorder = mediaRecorderRef.current
+
       if (!recorder || recorder.state === 'inactive') {
-        reject(new Error('No hay grabación activa'))
+        reject(new Error('No hay una grabación activa.'))
         return
       }
 
-      recorder.onstop = () => {
-        const mimeType = recorder.mimeType || 'audio/webm'
-        const blob = new Blob(chunksRef.current, { type: mimeType })
-        cleanupStream()
-        mediaRecorderRef.current = null
-        chunksRef.current = []
-        setIsRecording(false)
+      const mimeType = recorder.mimeType || 'audio/webm'
+
+      const handleStop = () => {
+        const blob = new Blob(chunksRef.current, {
+          type: mimeType,
+        })
+
+        cleanup()
         resolve(blob)
       }
 
+      recorder.addEventListener('stop', handleStop, { once: true })
       recorder.stop()
     })
   }
 
-  return { isRecording, startRecording, stopRecording, error }
+  return {
+    isRecording,
+    startRecording,
+    stopRecording,
+    error,
+  }
 }
