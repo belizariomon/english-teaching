@@ -113,7 +113,7 @@ export async function processConversation(
   try {
     transcript = await transcribeAudio(audioBuffer, mimeType);
   } catch (error) {
-    console.error('[conversation] Error getting tutor feedback:', error);
+    console.error('[conversation] Error transcribing audio:', error);
     throw error;
   }
 
