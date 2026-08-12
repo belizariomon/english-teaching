@@ -10,7 +10,7 @@ conversationRouter.post(
   '/conversation',
   upload.single('audio'),
   async (request, response) => {
-    console.log('Incoming request:');
+    console.log('Incoming request');
 
     if (!process.env.OPENAI_API_KEY) {
       response.status(500).json({ error: 'OPENAI_API_KEY is not configured' });
