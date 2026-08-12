@@ -118,6 +118,11 @@ export async function processConversation(
   }
 
   const { correction, explanation, reply } = await getTutorFeedback(transcript);
+  console.log('[conversation] Correction:', correction);
+  console.log('[conversation] Explanation:', explanation);
+  console.log('[conversation] Reply:', reply);
   const audioBase64 = await synthesizeSpeech(reply);
+  console.log('[conversation] AudioBase64:', audioBase64);
+  console.log('[conversation] Speech synthesized');
   return { transcript, correction, explanation, reply, audioBase64 };
 }
