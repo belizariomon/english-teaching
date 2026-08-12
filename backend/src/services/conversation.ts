@@ -109,11 +109,14 @@ export async function processConversation(
   audioBuffer: Buffer,
   mimeType: string,
 ): Promise<ConversationResult> {
-  console.log('[conversation] Starting');
-  console.log('[conversation] Audio size:', audioBuffer.length);
-  console.log('[conversation] MIME type:', mimeType);
-  const transcript = await transcribeAudio(audioBuffer, mimeType);
-  console.log('[conversation] Transcript:', transcript);
+  let transcript = '';
+  try {
+    transcript = await transcribeAudio(audioBuffer, mimeType);
+  } catch (error) {
+    console.error('[conversation] Error transcribing audio:', error);
+    throw error;
+  }
+
   const { correction, explanation, reply } = await getTutorFeedback(transcript);
   console.log('[conversation] Correction:', correction);
   console.log('[conversation] Explanation:', explanation);
