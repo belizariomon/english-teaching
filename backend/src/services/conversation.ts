@@ -1,4 +1,4 @@
-import { openai } from './openai-client.js'
+import { openai } from './openai-client.js';
 
 const TUTOR_INSTRUCTIONS = `You are a friendly English tutor helping a Spanish-speaking learner practice conversational English.
 
@@ -7,51 +7,65 @@ Given what the student said in English:
 - If the sentence is correct: set "correction" to the same sentence and "explanation" to a brief praise (e.g. "Great job, that was perfect!").
 - Always include a short conversational "reply" to keep the practice going (1-2 sentences, natural and encouraging).
 
-Respond only with the JSON fields requested. Keep explanations concise (1-3 sentences).`
+Respond only with the JSON fields requested. Keep explanations concise (1-3 sentences).`;
 
 const TUTOR_SCHEMA = {
   type: 'object' as const,
   properties: {
-    correction: { type: 'string' as const, description: 'Corrected sentence, or same if no errors' },
-    explanation: { type: 'string' as const, description: 'Brief explanation of errors or praise' },
-    reply: { type: 'string' as const, description: 'Short conversational reply to continue practice' },
+    correction: {
+      type: 'string' as const,
+      description: 'Corrected sentence, or same if no errors',
+    },
+    explanation: {
+      type: 'string' as const,
+      description: 'Brief explanation of errors or praise',
+    },
+    reply: {
+      type: 'string' as const,
+      description: 'Short conversational reply to continue practice',
+    },
   },
   required: ['correction', 'explanation', 'reply'] as const,
   additionalProperties: false,
-}
+};
 
 export type ConversationResult = {
-  transcript: string
-  correction: string
-  explanation: string
-  reply: string
-  audioBase64: string
-}
+  transcript: string;
+  correction: string;
+  explanation: string;
+  reply: string;
+  audioBase64: string;
+};
 
 function extensionFromMime(mimeType: string): string {
-  if (mimeType.includes('webm')) return 'webm'
-  if (mimeType.includes('mp4') || mimeType.includes('m4a')) return 'm4a'
-  if (mimeType.includes('mpeg') || mimeType.includes('mp3')) return 'mp3'
-  if (mimeType.includes('wav')) return 'wav'
-  return 'webm'
+  if (mimeType.includes('webm')) return 'webm';
+  if (mimeType.includes('mp4') || mimeType.includes('m4a')) return 'm4a';
+  if (mimeType.includes('mpeg') || mimeType.includes('mp3')) return 'mp3';
+  if (mimeType.includes('wav')) return 'wav';
+  return 'webm';
 }
 
-async function transcribeAudio(audioBuffer: Buffer, mimeType: string): Promise<string> {
-  const extension = extensionFromMime(mimeType)
-  const file = new File([new Uint8Array(audioBuffer)], `audio.${extension}`, { type: mimeType })
+async function transcribeAudio(
+  audioBuffer: Buffer,
+  mimeType: string,
+): Promise<string> {
+  const extension = extensionFromMime(mimeType);
+  const file = new File([new Uint8Array(audioBuffer)], `audio.${extension}`, {
+    type: mimeType,
+  });
 
   const transcription = await openai.audio.transcriptions.create({
     file,
     model: 'gpt-4o-mini-transcribe',
-  })
+  });
 
-  return transcription.text.trim()
+  return transcription.text.trim();
 }
 
 async function getTutorFeedback(transcript: string): Promise<{
-  correction: string
-  explanation: string
-  reply: string
+  correction: string;
+  explanation: string;
+  reply: string;
 }> {
   const response = await openai.responses.create({
     model: 'gpt-4o-mini',
@@ -65,14 +79,18 @@ async function getTutorFeedback(transcript: string): Promise<{
         strict: true,
       },
     },
-  })
+  });
 
-  const raw = response.output_text
+  const raw = response.output_text;
   if (!raw) {
-    throw new Error('Empty response from tutor model')
+    throw new Error('Empty response from tutor model');
   }
 
-  return JSON.parse(raw) as { correction: string; explanation: string; reply: string }
+  return JSON.parse(raw) as {
+    correction: string;
+    explanation: string;
+    reply: string;
+  };
 }
 
 async function synthesizeSpeech(text: string): Promise<string> {
@@ -81,19 +99,19 @@ async function synthesizeSpeech(text: string): Promise<string> {
     voice: 'alloy',
     input: text,
     response_format: 'mp3',
-  })
+  });
 
-  const buffer = Buffer.from(await speech.arrayBuffer())
-  return buffer.toString('base64')
+  const buffer = Buffer.from(await speech.arrayBuffer());
+  return buffer.toString('base64');
 }
 
 export async function processConversation(
   audioBuffer: Buffer,
   mimeType: string,
 ): Promise<ConversationResult> {
-  const transcript = await transcribeAudio(audioBuffer, mimeType)
-  const { correction, explanation, reply } = await getTutorFeedback(transcript)
-  const audioBase64 = await synthesizeSpeech(reply)
+  const transcript = await transcribeAudio(audioBuffer, mimeType);
+  const { correction, explanation, reply } = await getTutorFeedback(transcript);
+  const audioBase64 = await synthesizeSpeech(reply);
 
-  return { transcript, correction, explanation, reply, audioBase64 }
+  return { transcript, correction, explanation, reply, audioBase64 };
 }

@@ -1,66 +1,68 @@
-import type { ConversationResult } from '../types/conversation'
-const API_URL =
-  import.meta.env.VITE_API_URL || ''
+import type { ConversationResult } from '../types/conversation';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export async function checkBackendHealth(): Promise<void> {
-  console.log('API_URL', API_URL)
-  const response = await fetch(`${API_URL}/api/health`)
+  console.log('API_URL', API_URL);
+  const response = await fetch(`${API_URL}/api/health`);
 
   if (!response.ok) {
-    throw new Error('Backend no disponible')
+    throw new Error('Backend no disponible');
   }
 }
 
 function getAudioExtension(blob: Blob): string {
-  const mimeType = blob.type.toLowerCase()
+  const mimeType = blob.type.toLowerCase();
 
   if (mimeType.includes('webm')) {
-    return 'webm'
+    return 'webm';
   }
 
   if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
-    return 'm4a'
+    return 'm4a';
   }
 
   if (mimeType.includes('mpeg') || mimeType.includes('mp3')) {
-    return 'mp3'
+    return 'mp3';
   }
 
   if (mimeType.includes('wav')) {
-    return 'wav'
+    return 'wav';
   }
 
-  return 'webm'
+  return 'webm';
 }
 
 export async function sendConversation(
   audioBlob: Blob,
 ): Promise<ConversationResult> {
-  const formData = new FormData()
+  const formData = new FormData();
 
-  const extension = getAudioExtension(audioBlob)
+  const extension = getAudioExtension(audioBlob);
 
-  formData.append(
-    'audio',
-    audioBlob,
-    `recording.${extension}`,
-  )
-  console.log('API_URL', API_URL)
+  console.log('API_URL:', API_URL);
+  console.log('Sending conversation to:', `${API_URL}/api/conversation`);
+  console.log('Audio:', {
+    type: audioBlob.type,
+    size: audioBlob.size,
+  });
+
+  formData.append('audio', audioBlob, `recording.${extension}`);
+
   const response = await fetch(`${API_URL}/api/conversation`, {
     method: 'POST',
     body: formData,
-  })
+  });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null)
+    const body = await response.json().catch(() => null);
 
     const message =
       body && typeof body.error === 'string'
         ? body.error
-        : 'Error al enviar la conversación'
+        : 'Error al enviar la conversación';
 
-    throw new Error(message)
+    throw new Error(message);
   }
 
-  return response.json() as Promise<ConversationResult>
+  return response.json() as Promise<ConversationResult>;
 }
