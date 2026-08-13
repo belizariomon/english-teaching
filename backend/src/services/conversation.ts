@@ -110,10 +110,16 @@ export async function processConversation(
   mimeType: string,
 ): Promise<ConversationResult> {
   let transcript = '';
-  console.log(
-    'process.env.OPENAI_API_KEY:',
-    process.env.OPENAI_API_KEY?.length ?? 0,
-  );
+  try {
+    console.log('[openai] Testing API connection...');
+
+    const models = await openai.models.list();
+
+    console.log('[openai] API connection OK, models:', models.data.length);
+  } catch (error) {
+    console.error('[openai] API connection FAILED:', error);
+  }
+
   try {
     transcript = await transcribeAudio(audioBuffer, mimeType);
   } catch (error) {
