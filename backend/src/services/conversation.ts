@@ -110,6 +110,10 @@ export async function processConversation(
   mimeType: string,
 ): Promise<ConversationResult> {
   let transcript = '';
+  console.log(
+    'process.env.OPENAI_API_KEY:',
+    process.env.OPENAI_API_KEY?.length ?? 0,
+  );
   try {
     transcript = await transcribeAudio(audioBuffer, mimeType);
   } catch (error) {
