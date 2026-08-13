@@ -49,16 +49,67 @@ async function transcribeAudio(
   mimeType: string,
 ): Promise<string> {
   const extension = extensionFromMime(mimeType);
-  const file = await toFile(audioBuffer, `audio.${extension}`, {
-    type: mimeType,
+
+  console.log('[transcription] Audio size:', audioBuffer.length);
+  console.log('[transcription] MIME type:', mimeType);
+  console.log('[transcription] Extension:', extension);
+
+  if (!audioBuffer.length) {
+    throw new Error('Audio buffer is empty');
+  }
+
+  const form = new FormData();
+
+  const blob = new Blob([new Uint8Array(audioBuffer)], {
+    type: mimeType || 'audio/webm',
   });
 
-  const transcription = await openai.audio.transcriptions.create({
-    file,
-    model: 'gpt-4o-mini-transcribe',
-  });
+  form.append('file', blob, `audio.${extension}`);
 
-  return transcription.text.trim();
+  form.append('model', 'gpt-4o-mini-transcribe');
+
+  console.log('[transcription] Sending request with native fetch...');
+
+  const response = await fetch(
+    'https://api.openai.com/v1/audio/transcriptions',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: form,
+    },
+  );
+
+  const responseText = await response.text();
+
+  console.log('[transcription] HTTP status:', response.status);
+
+  if (!response.ok) {
+    console.error('[transcription] OpenAI error:', responseText);
+
+    throw new Error(
+      `OpenAI transcription failed (${response.status}): ${responseText}`,
+    );
+  }
+
+  let result: { text?: string };
+
+  try {
+    result = JSON.parse(responseText);
+  } catch {
+    throw new Error(`Invalid JSON response from OpenAI: ${responseText}`);
+  }
+
+  const text = result.text?.trim();
+
+  if (!text) {
+    throw new Error('OpenAI returned an empty transcription');
+  }
+
+  console.log('[transcription] Text:', text);
+
+  return text;
 }
 
 async function getTutorFeedback(transcript: string): Promise<{
