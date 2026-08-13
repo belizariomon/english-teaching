@@ -1,5 +1,4 @@
-import { openai } from './openai-client.js';
-
+import { openai, toFile } from './openai-client.js';
 const TUTOR_INSTRUCTIONS = `You are a friendly English tutor helping a Spanish-speaking learner practice conversational English.
 
 Given what the student said in English:
@@ -50,7 +49,7 @@ async function transcribeAudio(
   mimeType: string,
 ): Promise<string> {
   const extension = extensionFromMime(mimeType);
-  const file = new File([new Uint8Array(audioBuffer)], `audio.${extension}`, {
+  const file = await toFile(audioBuffer, `audio.${extension}`, {
     type: mimeType,
   });
 
